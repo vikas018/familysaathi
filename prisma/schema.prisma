@@ -1,0 +1,59 @@
+// FamilySaathi — Prisma schema (Supabase Postgres).
+// Drivers & FAQs are content the business edits; Enquiry captures real leads.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// A verified "saathi" (driver / family-help partner) shown on the site.
+model Driver {
+  id         String   @id @default(cuid())
+  name       String
+  initials   String
+  experience String
+  languages  String
+  rating     String
+  trips      Int
+  spec       String
+  tags       String[] // e.g. ["driver","outstation"] — used by the filter chips
+  badges     String[] // e.g. ["Aadhaar","Police","DL"]
+  gradient   String // CSS gradient for the avatar
+  order      Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([active, order])
+}
+
+/// A frequently-asked question shown in the FAQ accordion.
+model Faq {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, order])
+}
+
+/// A lead submitted through the enquiry form.
+model Enquiry {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  service   String
+  message   String?
+  source    String   @default("web")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

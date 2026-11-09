@@ -1,72 +1,99 @@
-# FamilySaathi — Static Website
+# FamilySaathi — Dynamic App
 
-Verified drivers for your own car **+** trusted family assistance in **Meerut** and the
-Delhi-NCR corridor. This is the Phase-1 **static** marketing / lead-generation site
-(HTML + CSS + JS). It can be migrated to a dynamic **Next.js** app later.
+Verified drivers for your own car **+** trusted family assistance in **Meerut**
+and the Delhi-NCR corridor. This is the **dynamic** version — a **Next.js** app
+with a **Postgres (Supabase)** database behind the drivers, FAQs, and enquiry
+capture. (Phase-1 was a static HTML/CSS/JS site; see git history.)
+
+## 🧱 Stack
+
+- **Next.js 15** (App Router) + **React 19** + **TypeScript**
+- **Prisma** ORM → **Supabase Postgres**
+- Deployed on **Vercel** (serverless)
+- Plain CSS (ported from the original), light/dark theme, fully responsive
 
 ## 📁 Structure
 
 ```
 familysaathi/
-├── index.html        # all page content & structure (single page)
-├── css/styles.css    # all styling (brand colours, light/dark, responsive)
-├── js/main.js        # interactivity: booking widget, driver search, FAQ, form
-├── favicon.svg       # browser tab icon
-└── README.md         # this file
+├── app/
+│   ├── layout.tsx         # root layout, SEO metadata, JSON-LD
+│   ├── page.tsx           # home page (server component) — composes all sections
+│   ├── globals.css        # all styling (brand colours, light/dark, responsive)
+│   ├── icon.svg           # favicon
+│   └── api/
+│       ├── enquiry/route.ts   # POST — saves a lead to the DB
+│       └── drivers/route.ts   # GET  — active drivers (DB + seed fallback)
+├── components/            # client islands: Header, BookingWidget, Drivers,
+│                          #   Faq, Contact, MoreBand, RevealObserver
+├── lib/
+│   ├── prisma.ts          # Prisma singleton (null when no DATABASE_URL)
+│   ├── data.ts            # getDrivers()/getFaqs() — DB with seed fallback
+│   ├── seed-data.ts       # initial drivers & FAQs (single source of truth)
+│   ├── config.ts          # business details from NEXT_PUBLIC_* env
+│   ├── whatsapp.ts        # WhatsApp deep-link helper
+│   └── types.ts
+├── prisma/
+│   ├── schema.prisma      # Driver, Faq, Enquiry models
+│   └── seed.ts            # seeds the DB from lib/seed-data.ts
+└── .env.example
 ```
 
 ## ▶️ Run locally
 
-Just open `index.html` in a browser. For a proper local server (recommended):
-
 ```powershell
-# Python
-python -m http.server 5500
-# then open http://localhost:5500
-
-# or VS Code: right-click index.html → "Open with Live Server"
+npm install
+npm run dev        # http://localhost:3000
 ```
 
-## ⚙️ Before going live — update these
+The site **works immediately without a database** — `lib/data.ts` falls back to
+the built-in seed data, and the enquiry form still opens WhatsApp. Configure a
+database (below) to make everything fully dynamic and to capture leads.
 
-Everything that needs changing is marked with `TODO` in `js/main.js`:
+## 🗄️ Database setup (Supabase)
 
-1. **WhatsApp number** — `WA_NUMBER` in `js/main.js`
-   (country code + number, no `+` or spaces, e.g. `"919876543210"`).
-2. **Phone number** — `PHONE` in `js/main.js`, plus the `tel:+910000000000` links
-   and `+91-XXXXX-XXXXX` placeholders in `index.html`.
-3. **Email** — replace `hello@familysaathi.in` placeholders in `index.html`.
-4. **Pricing** — the ₹499 / ₹899 / ₹1,199 packages are *indicative*. Confirm real
-   Meerut rates and update the Pricing section in `index.html`.
-5. **Driver profiles & FAQs** — edit the `drivers` and `faqs` arrays in `js/main.js`.
-6. **Driver photos** — profiles currently use coloured initials. Swap for real photos later.
-
-## 🚀 Deploy (pick one — all free)
-
-### GitHub Pages
-1. Create a repo on GitHub (account **vikas018**), e.g. `familysaathi`.
-2. From this folder:
-   ```powershell
-   git init
-   git add .
-   git commit -m "FamilySaathi static site"
-   git branch -M main
-   git remote add origin https://github.com/vikas018/familysaathi.git
-   git push -u origin main
+1. Create a project at [supabase.com](https://supabase.com).
+2. **Project Settings → Database → Connection string** — copy both the **pooled**
+   (port 6543) and **direct** (port 5432) strings.
+3. Copy `.env.example` → `.env` and fill in:
    ```
-3. Repo → **Settings → Pages** → Source = `main` branch, `/root` → Save.
-   Live at `https://vikas018.github.io/familysaathi/`.
+   DATABASE_URL="…pooler…:6543/postgres?pgbouncer=true&connection_limit=1"
+   DIRECT_URL="…:5432/postgres"
+   ```
+4. Create the tables and seed them:
+   ```powershell
+   npm run db:push     # create tables from schema.prisma
+   npm run db:seed     # load the initial drivers & FAQs
+   ```
+5. (Optional) browse/edit data: `npm run db:studio`.
 
-### Netlify / Vercel (drag & drop)
-- Netlify: go to app.netlify.com → drag this folder onto the page. Done.
-- Vercel: `vercel` CLI, or import the GitHub repo at vercel.com.
+## ⚙️ Before going live — set these env vars
 
-## 🔮 Making it dynamic later
+Public business details (safe for the browser). Set in `.env` locally and in
+**Vercel → Project → Settings → Environment Variables**:
 
-The static structure maps cleanly onto Next.js:
-- `index.html` sections → React components (Hero, Services, Pricing, Drivers, FAQ, Contact)
-- `drivers` / `faqs` arrays in `main.js` → data from an API or CMS
-- The WhatsApp enquiry form → a real backend endpoint (e.g. a `/api/enquiry` route)
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `NEXT_PUBLIC_WA_NUMBER` | WhatsApp number (cc + number, no `+`/spaces) | `919876543210` |
+| `NEXT_PUBLIC_PHONE` | Phone number | `+919876543210` |
+| `NEXT_PUBLIC_EMAIL` | Contact email | `hello@familysaathi.in` |
+| `NEXT_PUBLIC_SITE_URL` | Canonical site URL | `https://www.familysaathi.in` |
+
+No code change needed — change the env var and redeploy.
+
+## 🚀 Deploy (Vercel)
+
+The repo is already connected to Vercel (GitHub integration). Every push to
+`main` auto-deploys. Add the env vars above (plus `DATABASE_URL` / `DIRECT_URL`)
+in the Vercel dashboard. `prisma generate` runs automatically on install.
+
+## 🔌 How "dynamic" works
+
+- **Drivers & FAQs** render from the database at request time (home page is
+  `force-dynamic`), so edits appear without a redeploy. No DB? → seed fallback.
+- **Enquiries** POST to `/api/enquiry`, get validated and saved to the `Enquiry`
+  table, *and* still open a pre-filled WhatsApp chat — leads are captured even if
+  WhatsApp is the customer's preferred channel.
 
 ## 🎨 Brand
 
@@ -76,4 +103,4 @@ The static structure maps cleanly onto Next.js:
 | Secondary (Teal) | `#14B8A6` |
 | Accent (Orange) | `#F97316` |
 
-Light & dark themes supported automatically (and a manual toggle in the header).
+Light & dark themes supported automatically (with a manual toggle, persisted).
